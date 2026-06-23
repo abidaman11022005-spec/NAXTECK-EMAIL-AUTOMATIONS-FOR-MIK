@@ -1,0 +1,4 @@
+.vscode/
+naxteck_email_automation/.env
+__pycache__/
+*.pyc
