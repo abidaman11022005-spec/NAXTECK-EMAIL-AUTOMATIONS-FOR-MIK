@@ -1,3 +1,4 @@
+import resend
 import requests
 import smtplib
 import os
@@ -12,15 +13,20 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"), override=True)
 
 META_TOKEN = os.getenv("META_ACCESS_TOKEN", "").strip()
 AD_ACCOUNTS = [a.strip() for a in os.getenv("META_AD_ACCOUNT_ID", "").split(",") if a.strip()]
-CLIENT_NAMES  = os.getenv("CLIENT_NAMES", "My Account").split(",")
-EMAIL_FROM    = os.getenv("EMAIL_FROM")
-EMAIL_PASSWORD= os.getenv("EMAIL_PASSWORD", "").replace(" ", "")
-EMAIL_TO      = os.getenv("EMAIL_TO")
-MAX_CPA       = float(os.getenv("MAX_CPA", 600))
-MIN_CTR       = float(os.getenv("MIN_CTR", 1.0))
-MIN_ROAS      = float(os.getenv("MIN_ROAS", 2.5))
-REPORT_TIME   = os.getenv("DAILY_REPORT_TIME", "09:00")
-API_VERSION   = "v19.0"
+CLIENT_NAMES = os.getenv("CLIENT_NAMES", "My Account").split(",")
+
+EMAIL_FROM = os.getenv("EMAIL_FROM")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "").replace(" ", "")
+EMAIL_TO = os.getenv("EMAIL_TO")
+
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
+
+MAX_CPA = float(os.getenv("MAX_CPA", 600))
+MIN_CTR = float(os.getenv("MIN_CTR", 1.0))
+MIN_ROAS = float(os.getenv("MIN_ROAS", 2.5))
+REPORT_TIME = os.getenv("DAILY_REPORT_TIME", "09:00")
+
+API_VERSION = "v19.0"
 
 AD_ACCOUNTS = [
     a.strip() if a.strip().startswith("act_") else f"act_{a.strip()}"
@@ -38,29 +44,32 @@ print(f"🔍 ALERTS   : Hourly check — only if triggered")
 print("─" * 50)
 
 def send_email(subject, html_body):
-    if not EMAIL_FROM or not EMAIL_PASSWORD or not EMAIL_TO:
-        print("❌ Email credentials missing!")
-        return
+    if not RESEND_API_KEY:
+        print("❌ RESEND_API_KEY missing!")
+        return False
+
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"]    = EMAIL_FROM
-        msg["To"]      = EMAIL_TO
-        msg.attach(MIMEText(html_body, "html"))
-        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(EMAIL_FROM, EMAIL_PASSWORD)
-            server.sendmail(
-                 EMAIL_FROM,
-                  [e.strip() for e in EMAIL_TO.split(",")],
-                  msg.as_string()
-                  )
-            server.sendmail(EMAIL_FROM, [EMAIL_TO], msg.as_string())
+        resend.api_key = RESEND_API_KEY
+
+        recipients = [
+            e.strip()
+            for e in EMAIL_TO.split(",")
+            if e.strip()
+        ]
+
+        resend.Emails.send({
+            "from": "NAXTECK Reports <onboarding@resend.dev>",
+            "to": recipients,
+            "subject": subject,
+            "html": html_body,
+        })
+
         print(f"✅ Email sent: {subject}")
+        return True
+
     except Exception as e:
         print(f"❌ Email error: {e}")
+        return False
 
 def get_insights(account_id, date_preset="yesterday"):
     url = f"https://graph.facebook.com/{API_VERSION}/{account_id}/insights"
