@@ -47,8 +47,16 @@ def send_email(subject, html_body):
         msg["From"]    = EMAIL_FROM
         msg["To"]      = EMAIL_TO
         msg.attach(MIMEText(html_body, "html"))
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
             server.login(EMAIL_FROM, EMAIL_PASSWORD)
+            server.sendmail(
+                 EMAIL_FROM,
+                  [e.strip() for e in EMAIL_TO.split(",")],
+                  msg.as_string()
+                  )
             server.sendmail(EMAIL_FROM, [EMAIL_TO], msg.as_string())
         print(f"✅ Email sent: {subject}")
     except Exception as e:
