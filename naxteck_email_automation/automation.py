@@ -58,7 +58,7 @@ def send_email(subject, html_body):
         ]
 
         resend.Emails.send({
-            "from": "NAXTECK Reports <onboarding@resend.dev>",
+           "from": "MIK Services <info@mikservices.com>"
             "to": recipients,
             "subject": subject,
             "html": html_body,
